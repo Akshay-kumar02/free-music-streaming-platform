@@ -88,6 +88,22 @@ For better performance and reliability:
    npm run dev
    ```
 
+## 🔧 Latest Updates (Dec 2024)
+
+### ✅ Fixed Issues
+- **Search API**: Updated to working Invidious instances
+- **Error Handling**: Better logging and user feedback
+- **Timeout Handling**: 8s timeout per instance, prevents hanging
+- **Retry Logic**: Tries multiple servers before failing
+- **Performance**: Faster search results
+
+### 🐛 Known Issues & Solutions
+- **Playback**: Click play button twice (browser autoplay restriction)
+- **First Load**: May take 5-10 seconds for Invidious fallback
+- **Ad Blockers**: Disable for localhost to avoid blocking YouTube embeds
+
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for detailed solutions.
+
 ## 📖 How It Works
 
 ### Search Flow
@@ -168,59 +184,15 @@ The app automatically uses Invidious API if no YouTube key is provided:
 
 ```typescript
 // Automatically tries these public instances:
-- https://invidious.io
-- https://inv.riverside.rocks
+- https://inv.nadeko.net
+- https://invidious.privacyredirect.com
 - https://yewtu.be
+- https://invidious.fdn.fr
+- https://inv.riverside.rocks
+- https://invidious.nerdvpn.de
 ```
 
 **No configuration needed!**
-
-## 🎯 Key Features Explained
-
-### 1. Global Search (Not Predefined)
-
-```typescript
-// Searches YouTube in real-time
-const response = await fetch(
-  `https://www.googleapis.com/youtube/v3/search?q=${query}`
-);
-```
-
-**Result**: Fresh results every time, no hardcoded songs
-
-### 2. AI Recommendations
-
-```typescript
-// Gets related videos using YouTube's algorithm
-const recommendations = await fetch(
-  `/api/recommendations?videoId=${currentTrack.id}`
-);
-```
-
-**Result**: Smart suggestions based on listening history
-
-### 3. Playlist System
-
-```typescript
-// Stored in browser localStorage
-localStorage.setItem('playlists', JSON.stringify(playlists));
-```
-
-**Result**: Playlists persist across sessions
-
-### 4. Auto-Play Next
-
-```typescript
-const playNext = () => {
-  if (queue.length > 0) {
-    // Play from queue
-  } else if (recommendations.length > 0) {
-    // Auto-play recommended song
-  }
-};
-```
-
-**Result**: Continuous music playback
 
 ## 🌐 Deployment
 
@@ -237,13 +209,47 @@ vercel
 # YOUTUBE_API_KEY = your_key_here
 ```
 
-### Other Platforms
+### Netlify
 
-Works on any Node.js hosting:
-- Netlify
-- Railway
-- Render
-- Heroku
+```bash
+# Install Netlify CLI
+npm i -g netlify-cli
+
+# Deploy
+netlify deploy --prod
+
+# Add environment variable in Netlify dashboard
+```
+
+### Railway
+
+```bash
+# Install Railway CLI
+npm i -g @railway/cli
+
+# Deploy
+railway up
+
+# Add environment variable in Railway dashboard
+```
+
+### Docker
+
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+```bash
+docker build -t music-player .
+docker run -p 3000:3000 -e YOUTUBE_API_KEY=your_key music-player
+```
 
 **Important**: Add `YOUTUBE_API_KEY` environment variable in platform settings
 
@@ -258,6 +264,7 @@ Works on any Node.js hosting:
 1. Click "▶ Play" on any song
 2. Player appears at bottom
 3. Music streams automatically
+4. **Note**: May need to click play twice (browser autoplay restriction)
 
 ### Build Queue
 1. Click "+ Queue" to add songs
@@ -358,16 +365,19 @@ const [youtube, soundcloud, spotify] = await Promise.all([
 - Check internet connection
 - Try different search terms
 - Verify API key (if using YouTube API)
+- Wait 5-10 seconds for Invidious fallback
 
 ### "Search failed"
 - Invidious instances might be down
 - Add YouTube API key for reliability
 - Check browser console for errors
+- See [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 
 ### Player not loading
+- **Click play button twice** (browser autoplay restriction)
 - Check if YouTube is accessible
-- Disable ad blockers
-- Try different browser
+- Disable ad blockers for localhost
+- Try different browser (Chrome/Edge recommended)
 
 ### API quota exceeded
 - App automatically switches to Invidious
@@ -376,7 +386,7 @@ const [youtube, soundcloud, spotify] = await Promise.all([
 
 ## 📊 Performance
 
-- **Search**: < 2 seconds
+- **Search**: 2-10 seconds (depending on API)
 - **Playback**: Instant (YouTube CDN)
 - **Recommendations**: < 1 second
 - **Playlist load**: Instant (localStorage)
@@ -404,9 +414,9 @@ MIT License - Free for personal and commercial use
 ## 📧 Support
 
 Issues? Questions?
+- Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md) first
 - Open GitHub issue
-- Check existing issues first
-- Include error messages
+- Include error messages and browser console logs
 
 ---
 
