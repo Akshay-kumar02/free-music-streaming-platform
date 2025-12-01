@@ -10,6 +10,10 @@ interface Track {
   thumbnail: string;
   source: string;
   url: string;
+  previewUrl?: string; // iTunes preview URL
+  videoId?: string; // YouTube video ID
+  album?: string;
+  genre?: string;
 }
 
 interface Playlist {
@@ -32,8 +36,11 @@ export default function Home() {
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [activeTab, setActiveTab] = useState<'search' | 'queue' | 'recommendations'>('search');
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   
-  const playerRef = useRef<HTMLIFrameElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const youtubeRef = useRef<HTMLIFrameElement>(null);
 
   // Load playlists from localStorage on mount
   useEffect(() => {
@@ -48,6 +55,42 @@ export default function Home() {
     localStorage.setItem('playlists', JSON.stringify(playlists));
   }, [playlists]);
 
+  // Handle audio element events
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleDurationChange = () => setDuration(audio.duration);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      playNext();
+    };
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('durationchange', handleDurationChange);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('durationchange', handleDurationChange);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+    };
+  }, []);
+
+  // Update volume
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume / 100;
+    }
+  }, [volume]);
+
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     
@@ -60,6 +103,8 @@ export default function Home() {
       
       if (data.tracks && data.tracks.length === 0) {
         alert('No results found. Try a different search term.');
+      } else {
+        console.log(`Found ${data.tracks.length} tracks from ${data.sources?.itunes || 0} iTunes + ${data.sources?.youtube || 0} YouTube`);
       }
     } catch (error) {
       console.error('Search error:', error);
@@ -82,6 +127,16 @@ export default function Home() {
 
   const playTrack = (track: Track, autoQueue: boolean = true) => {
     setCurrentTrack(track);
+    
+    // Handle iTunes audio playback
+    if (track.source === 'itunes' && track.previewUrl && audioRef.current) {
+      audioRef.current.src = track.previewUrl;
+      audioRef.current.play().catch(err => {
+        console.error('Audio playback failed:', err);
+        alert('Playback failed. Click play again or try another song.');
+      });
+    }
+    
     setIsPlaying(true);
     
     // Load recommendations for auto-play
@@ -94,7 +149,17 @@ export default function Home() {
   };
 
   const togglePlay = () => {
-    setIsPlaying(!isPlaying);
+    if (!currentTrack) return;
+    
+    if (currentTrack.source === 'itunes' && audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play().catch(err => console.error('Play failed:', err));
+      }
+    } else {
+      setIsPlaying(!isPlaying);
+    }
   };
 
   const addToQueue = (track: Track) => {
@@ -128,6 +193,19 @@ export default function Home() {
     const currentIndex = queue.findIndex(t => t.id === currentTrack?.id);
     const prevIndex = currentIndex <= 0 ? queue.length - 1 : currentIndex - 1;
     playTrack(queue[prevIndex], false);
+  };
+
+  const seekTo = (time: number) => {
+    if (audioRef.current && currentTrack?.source === 'itunes') {
+      audioRef.current.currentTime = time;
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    if (isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const createPlaylist = () => {
@@ -182,10 +260,13 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#121212', color: 'white', fontFamily: 'system-ui, -apple-system, sans-serif', paddingBottom: currentTrack ? '180px' : '20px' }}>
+      {/* Hidden audio element for iTunes playback */}
+      <audio ref={audioRef} preload="metadata" />
+      
       {/* Header */}
       <header style={{ backgroundColor: '#1db954', padding: '20px 40px', boxShadow: '0 2px 10px rgba(0,0,0,0.3)', position: 'sticky', top: 0, zIndex: 100 }}>
         <h1 style={{ fontSize: '2rem', fontWeight: 'bold', margin: 0 }}>🎵 AI Music Player</h1>
-        <p style={{ margin: '5px 0 0 0', opacity: 0.9 }}>Search any song • AI recommendations • Unlimited streaming</p>
+        <p style={{ margin: '5px 0 0 0', opacity: 0.9 }}>Search any song • Real iTunes previews • YouTube integration</p>
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '20px', padding: '20px', maxWidth: '1800px', margin: '0 auto' }}>
@@ -298,53 +379,47 @@ export default function Home() {
                 >Create</button>
               </div>
             )}
-            
-            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
               {playlists.length === 0 ? (
                 <p style={{ color: '#b3b3b3', fontSize: '0.85rem' }}>No playlists yet</p>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {playlists.map(playlist => (
-                    <div key={playlist.id} style={{
-                      backgroundColor: currentPlaylist?.id === playlist.id ? '#282828' : '#1e1e1e',
-                      padding: '10px',
-                      borderRadius: '6px',
-                      border: currentPlaylist?.id === playlist.id ? '2px solid #1db954' : 'none'
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{playlist.name}</div>
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                          <button
-                            onClick={() => playPlaylist(playlist)}
-                            disabled={playlist.tracks.length === 0}
-                            style={{
-                              padding: '4px 8px',
-                              backgroundColor: playlist.tracks.length === 0 ? '#333' : '#1db954',
-                              border: 'none',
-                              borderRadius: '4px',
-                              color: 'white',
-                              fontSize: '0.7rem',
-                              cursor: playlist.tracks.length === 0 ? 'not-allowed' : 'pointer'
-                            }}
-                          >▶</button>
-                          <button
-                            onClick={() => deletePlaylist(playlist.id)}
-                            style={{
-                              padding: '4px 8px',
-                              backgroundColor: '#d32f2f',
-                              border: 'none',
-                              borderRadius: '4px',
-                              color: 'white',
-                              fontSize: '0.7rem',
-                              cursor: 'pointer'
-                            }}
-                          >🗑</button>
-                        </div>
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#b3b3b3' }}>{playlist.tracks.length} tracks</div>
+                playlists.map(playlist => (
+                  <div key={playlist.id} style={{
+                    backgroundColor: currentPlaylist?.id === playlist.id ? '#282828' : '#1e1e1e',
+                    padding: '12px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    border: currentPlaylist?.id === playlist.id ? '2px solid #1db954' : 'none'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{playlist.name}</div>
+                      <button
+                        onClick={() => deletePlaylist(playlist.id)}
+                        style={{ background: 'none', border: 'none', color: '#b3b3b3', cursor: 'pointer', fontSize: '1.2rem' }}
+                      >×</button>
                     </div>
-                  ))}
-                </div>
+                    <div style={{ fontSize: '0.75rem', color: '#b3b3b3', marginBottom: '8px' }}>
+                      {playlist.tracks.length} tracks
+                    </div>
+                    {playlist.tracks.length > 0 && (
+                      <button
+                        onClick={() => playPlaylist(playlist)}
+                        style={{
+                          width: '100%',
+                          padding: '6px',
+                          backgroundColor: '#1db954',
+                          border: 'none',
+                          borderRadius: '4px',
+                          color: 'white',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          cursor: 'pointer'
+                        }}
+                      >▶ Play All</button>
+                    )}
+                  </div>
+                ))
               )}
             </div>
           </div>
@@ -353,19 +428,19 @@ export default function Home() {
         {/* Main Content */}
         <div>
           {/* Search Bar */}
-          <div style={{ backgroundColor: '#181818', borderRadius: '8px', padding: '20px', marginBottom: '20px' }}>
+          <div style={{ backgroundColor: '#181818', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
             <div style={{ display: 'flex', gap: '10px' }}>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                placeholder="Search any song, artist, or album..."
+                placeholder="Search for songs, artists, albums..."
                 style={{
                   flex: 1,
-                  padding: '15px 20px',
+                  padding: '12px 20px',
                   backgroundColor: '#282828',
-                  border: 'none',
+                  border: '2px solid #333',
                   borderRadius: '25px',
                   color: 'white',
                   fontSize: '1rem',
@@ -376,18 +451,17 @@ export default function Home() {
                 onClick={handleSearch}
                 disabled={loading}
                 style={{
-                  padding: '15px 40px',
-                  backgroundColor: '#1db954',
+                  padding: '12px 30px',
+                  backgroundColor: loading ? '#666' : '#1db954',
                   border: 'none',
                   borderRadius: '25px',
                   color: 'white',
                   fontSize: '1rem',
                   fontWeight: '600',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.6 : 1
+                  cursor: loading ? 'not-allowed' : 'pointer'
                 }}
               >
-                {loading ? '🔍 Searching...' : '🔍 Search'}
+                {loading ? 'Searching...' : '🔍 Search'}
               </button>
             </div>
           </div>
@@ -420,65 +494,54 @@ export default function Home() {
             >Recommendations ({recommendations.length})</button>
           </div>
 
-          {/* Content Area */}
-          <div style={{ backgroundColor: '#181818', borderRadius: '8px', padding: '20px' }}>
+          {/* Content */}
+          <div>
             {activeTab === 'search' && (
-              <>
-                <h2 style={{ fontSize: '1.3rem', marginBottom: '20px' }}>
-                  {tracks.length > 0 ? `🎵 ${tracks.length} Results` : '🎵 Search Results'}
-                </h2>
-                
-                {loading ? (
-                  <div style={{ textAlign: 'center', padding: '40px', color: '#b3b3b3' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🔍</div>
-                    Searching for music...
-                  </div>
-                ) : tracks.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '40px', color: '#b3b3b3' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🎵</div>
-                    Search for any song in the world
+              <div>
+                {tracks.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '60px 20px', color: '#b3b3b3' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🎵</div>
+                    <h2 style={{ fontSize: '1.5rem', marginBottom: '10px' }}>Search for music</h2>
+                    <p>Try searching for your favorite songs, artists, or albums</p>
                   </div>
                 ) : (
                   <TrackList 
                     tracks={tracks} 
-                    onPlay={playTrack}
+                    onPlay={playTrack} 
                     onAddToQueue={addToQueue}
                     onAddToPlaylist={addToPlaylist}
                     playlists={playlists}
                     currentTrack={currentTrack}
                   />
                 )}
-              </>
+              </div>
             )}
 
             {activeTab === 'recommendations' && (
-              <>
-                <h2 style={{ fontSize: '1.3rem', marginBottom: '20px' }}>
-                  ✨ AI Recommendations
-                </h2>
-                
+              <div>
                 {recommendations.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '40px', color: '#b3b3b3' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🤖</div>
-                    Play a song to get AI-powered recommendations
+                  <div style={{ textAlign: 'center', padding: '60px 20px', color: '#b3b3b3' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🤖</div>
+                    <h2 style={{ fontSize: '1.5rem', marginBottom: '10px' }}>No recommendations yet</h2>
+                    <p>Play a song to get AI-powered recommendations</p>
                   </div>
                 ) : (
                   <TrackList 
                     tracks={recommendations} 
-                    onPlay={playTrack}
+                    onPlay={playTrack} 
                     onAddToQueue={addToQueue}
                     onAddToPlaylist={addToPlaylist}
                     playlists={playlists}
                     currentTrack={currentTrack}
                   />
                 )}
-              </>
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Player Bar */}
+      {/* Bottom Player Bar */}
       {currentTrack && (
         <div style={{
           position: 'fixed',
@@ -490,13 +553,38 @@ export default function Home() {
           padding: '15px 20px',
           zIndex: 1000
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '10px' }}>
-            <img src={currentTrack.thumbnail} alt={currentTrack.title} style={{ width: '56px', height: '56px', borderRadius: '4px' }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '0.95rem', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentTrack.title}</div>
-              <div style={{ fontSize: '0.8rem', color: '#b3b3b3' }}>{currentTrack.artist}</div>
+          {/* Progress Bar */}
+          {currentTrack.source === 'itunes' && (
+            <div style={{ marginBottom: '10px' }}>
+              <input
+                type="range"
+                min="0"
+                max={duration || 100}
+                value={currentTime}
+                onChange={(e) => seekTo(parseFloat(e.target.value))}
+                style={{ width: '100%', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#b3b3b3', marginTop: '5px' }}>
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(duration)}</span>
+              </div>
             </div>
-            
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            {/* Track Info */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1, minWidth: 0 }}>
+              <img src={currentTrack.thumbnail} alt="" style={{ width: '60px', height: '60px', borderRadius: '4px', objectFit: 'cover' }} />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: '1rem', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentTrack.title}</div>
+                <div style={{ fontSize: '0.85rem', color: '#b3b3b3' }}>{currentTrack.artist}</div>
+                {currentTrack.album && (
+                  <div style={{ fontSize: '0.75rem', color: '#888' }}>{currentTrack.album}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Controls */}
             <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
               <button
                 onClick={playPrevious}
@@ -582,18 +670,18 @@ export default function Home() {
                 cursor: 'pointer'
               }}
             >
-              Open in YouTube
+              Open in {currentTrack.source === 'itunes' ? 'iTunes' : 'YouTube'}
             </a>
           </div>
 
-          {/* YouTube Player */}
+          {/* YouTube Player (hidden, only for YouTube tracks) */}
           {isPlaying && currentTrack.source === 'youtube' && (
             <div style={{ marginTop: '10px' }}>
               <iframe
-                ref={playerRef}
+                ref={youtubeRef}
                 width="100%"
                 height="80"
-                src={`https://www.youtube.com/embed/${currentTrack.id}?autoplay=1&enablejsapi=1`}
+                src={`https://www.youtube.com/embed/${currentTrack.videoId}?autoplay=1&enablejsapi=1`}
                 title={currentTrack.title}
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -633,8 +721,12 @@ function TrackList({ tracks, onPlay, onAddToQueue, onAddToPlaylist, playlists, c
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: '1rem', fontWeight: '500', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.title}</div>
             <div style={{ fontSize: '0.85rem', color: '#b3b3b3' }}>{track.artist}</div>
+            {track.album && (
+              <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '2px' }}>{track.album}</div>
+            )}
             <div style={{ fontSize: '0.75rem', color: '#1db954', marginTop: '4px' }}>
               {track.source.toUpperCase()} • {track.duration}
+              {track.genre && ` • ${track.genre}`}
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px', position: 'relative' }}>
