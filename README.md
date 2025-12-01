@@ -1,56 +1,51 @@
 # 🎵 AI-Powered Music Player
 
-**Fully functional music streaming platform with AI recommendations, global search, and unlimited playback**
+**Real music streaming with iTunes Search API + optional YouTube integration**
 
-Search ANY song in the world, get AI-powered recommendations, create playlists, and stream unlimited music - completely free!
+Search ANY song, get 30-second iTunes previews, AI recommendations, create playlists - completely free!
 
 ## ✨ Features
 
-### 🔍 Global Music Search
-- Search **ANY song** from YouTube's massive library
-- Real-time search results with thumbnails, artist info, and duration
-- No predefined song lists - everything is dynamic
-- Works with or without API keys (fallback to Invidious)
+### 🔍 Real Music Search
+- **iTunes Search API** - Real songs with 30-second previews (NO API KEY NEEDED!)
+- **YouTube integration** - Optional, requires API key
+- Search by song name, artist, or album
+- High-quality album artwork
+- Real-time results
 
-### 🎧 Advanced Playback Engine
-- Smooth YouTube embed player integration
-- Play/Pause controls
-- Next/Previous track navigation
+### 🎧 Advanced Playback
+- **HTML5 Audio Player** for iTunes tracks
+- Full playback controls (play/pause/seek)
+- Progress bar with time display
 - Volume control
-- Auto-play next recommended song
-- Seek bar with time display
+- Auto-play next track
+- Queue management
 
-### 🤖 AI Recommendation System
-- Intelligent song recommendations based on what you're listening to
-- Uses YouTube's related videos algorithm
-- Metadata-based matching
+### 🤖 AI Recommendations
+- Intelligent song suggestions
+- Based on current track
 - Auto-queue recommended songs
 
 ### 📝 Playlist Management
 - Create unlimited playlists
-- Add/remove songs from playlists
+- Add/remove songs
 - Play entire playlists
-- Delete playlists
 - Persistent storage (localStorage)
 
 ### 🎯 Queue System
-- Dynamic queue management
-- Add songs to queue
-- Remove from queue
+- Dynamic queue
 - Visual queue display
-- Auto-play from queue
+- Next/Previous navigation
 
-### 🎨 Modern UI/UX
+### 🎨 Modern UI
 - Spotify-inspired design
-- Responsive layout (desktop & mobile)
-- Sticky bottom player bar
-- Tabbed interface (Search / Recommendations)
-- Playlist sidebar
+- Responsive layout
 - Real-time visual feedback
+- Album artwork display
 
 ## 🚀 Quick Start
 
-### Option 1: Works Immediately (No Setup)
+### Works Immediately (No Setup Required!)
 
 ```bash
 git clone https://github.com/Akshay-kumar02/free-music-streaming-platform.git
@@ -59,20 +54,19 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000 - **It works right away!**
+Open http://localhost:3000 - **Search and play music instantly!**
 
-Uses Invidious API (public YouTube frontend) - no API key needed.
+Uses **iTunes Search API** - no configuration needed, real 30-second previews!
 
-### Option 2: Enhanced with YouTube API (Recommended)
+### Optional: Add YouTube Integration
 
-For better performance and reliability:
+For additional YouTube results:
 
 1. **Get YouTube Data API v3 Key** (Free - 10,000 requests/day)
    - Go to [Google Cloud Console](https://console.cloud.google.com/)
    - Create new project
    - Enable "YouTube Data API v3"
    - Create credentials → API Key
-   - Copy your API key
 
 2. **Add to Environment**
    ```bash
@@ -88,111 +82,112 @@ For better performance and reliability:
    npm run dev
    ```
 
-## 🔧 Latest Updates (Dec 2024)
+Now you'll get iTunes + YouTube results!
 
-### ✅ Fixed Issues
-- **Search API**: Updated to working Invidious instances
-- **Error Handling**: Better logging and user feedback
-- **Timeout Handling**: 8s timeout per instance, prevents hanging
-- **Retry Logic**: Tries multiple servers before failing
-- **Performance**: Faster search results
-
-### 🐛 Known Issues & Solutions
-- **Playback**: Click play button twice (browser autoplay restriction)
-- **First Load**: May take 5-10 seconds for Invidious fallback
-- **Ad Blockers**: Disable for localhost to avoid blocking YouTube embeds
-
-See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for detailed solutions.
-
-## 📖 How It Works
+## 🎵 How It Works
 
 ### Search Flow
-1. User enters search query
-2. System queries YouTube Data API (or Invidious fallback)
-3. Returns 20 real-time results with:
-   - Video ID
-   - Title
-   - Artist/Channel
-   - Thumbnail
-   - Duration
-4. No hardcoded songs - everything is live
+1. User searches for a song
+2. **iTunes Search API** returns real tracks with:
+   - Track name
+   - Artist name
+   - Album name
+   - 30-second preview URL
+   - High-quality artwork
+   - Genre, release year
+3. Optional: YouTube results added if API key provided
+4. Display combined results
 
 ### Playback Flow
-1. User clicks "Play" on any song
-2. System embeds YouTube player with video ID
-3. Audio streams directly from YouTube
-4. Loads AI recommendations in background
-5. Auto-plays next song when current ends
+1. User clicks "Play" on iTunes track
+2. HTML5 `<audio>` element loads preview URL
+3. Audio streams directly from Apple servers
+4. Full controls: play/pause, seek, volume
+5. Auto-plays next track when finished
 
-### Recommendation Flow
-1. When song plays, system fetches related videos
-2. Uses YouTube's recommendation algorithm
-3. Displays in "Recommendations" tab
-4. Auto-queues for seamless playback
+### APIs Used
 
-### Playlist Flow
-1. User creates playlist (stored in localStorage)
-2. Add songs from search/recommendations
-3. Play entire playlist with one click
-4. Persistent across sessions
+#### iTunes Search API (Primary)
+```javascript
+// No API key needed!
+fetch('https://itunes.apple.com/search?term=beatles&media=music&limit=20')
+```
+
+**Returns:**
+- `trackName` - Song title
+- `artistName` - Artist
+- `artworkUrl100` - Album art
+- `previewUrl` - 30-second MP3 preview
+- `collectionName` - Album name
+- `primaryGenreName` - Genre
+
+#### YouTube Data API v3 (Optional)
+```javascript
+// Requires API key
+fetch('https://www.googleapis.com/youtube/v3/search?q=beatles&key=YOUR_KEY')
+```
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 14, React, TypeScript
 - **Styling**: Inline CSS (no dependencies)
 - **APIs**: 
-  - YouTube Data API v3 (primary)
-  - Invidious API (fallback)
+  - iTunes Search API (primary, no key needed)
+  - YouTube Data API v3 (optional)
+- **Audio**: HTML5 Audio Element
 - **Storage**: localStorage (playlists)
-- **Player**: YouTube Embed API
 
 ## 📁 Project Structure
 
 ```
 app/
-├── page.tsx                    # Main UI component
+├── page.tsx                    # Main UI with audio player
 ├── layout.tsx                  # App layout
 ├── api/
-│   ├── search/route.ts        # Global music search
+│   ├── search/route.ts        # iTunes + YouTube search
 │   ├── recommendations/route.ts # AI recommendations
-│   └── stream/route.ts        # Streaming endpoint
+│   └── stream/route.ts        # Stream endpoint
 ```
 
-## 🔑 API Configuration
+## 🔑 API Details
 
-### YouTube Data API v3
+### iTunes Search API
 
-**File**: `app/api/search/route.ts`
+**Endpoint**: `https://itunes.apple.com/search`
 
-```typescript
-const API_KEY = process.env.YOUTUBE_API_KEY;
+**Parameters**:
+- `term` - Search query
+- `media=music` - Music only
+- `entity=song` - Songs only
+- `limit=20` - Results count
+
+**No API key required!** ✅
+
+**Response**:
+```json
+{
+  "results": [
+    {
+      "trackId": 123456,
+      "trackName": "Hey Jude",
+      "artistName": "The Beatles",
+      "collectionName": "1",
+      "artworkUrl100": "https://...",
+      "previewUrl": "https://audio.itunes.apple.com/...",
+      "trackTimeMillis": 431333,
+      "primaryGenreName": "Rock"
+    }
+  ]
+}
 ```
 
-**Where to insert**: Add to `.env` file:
-```
-YOUTUBE_API_KEY=YOUR_API_KEY_HERE
-```
+### YouTube Data API v3 (Optional)
 
-**Get API Key**:
-1. https://console.cloud.google.com/
-2. Create project → Enable YouTube Data API v3
-3. Credentials → Create API Key
+**Requires**: API Key from Google Cloud Console
 
-### Fallback (No API Key)
+**Free Tier**: 10,000 units/day (~100 searches)
 
-The app automatically uses Invidious API if no YouTube key is provided:
-
-```typescript
-// Automatically tries these public instances:
-- https://inv.nadeko.net
-- https://invidious.privacyredirect.com
-- https://yewtu.be
-- https://invidious.fdn.fr
-- https://inv.riverside.rocks
-- https://invidious.nerdvpn.de
-```
-
-**No configuration needed!**
+**Setup**: Add `YOUTUBE_API_KEY` to `.env`
 
 ## 🌐 Deployment
 
@@ -205,32 +200,23 @@ npm i -g vercel
 # Deploy
 vercel
 
-# Add environment variable in Vercel dashboard:
+# Optional: Add YouTube API key in Vercel dashboard
+# Settings → Environment Variables
 # YOUTUBE_API_KEY = your_key_here
 ```
 
 ### Netlify
 
 ```bash
-# Install Netlify CLI
 npm i -g netlify-cli
-
-# Deploy
 netlify deploy --prod
-
-# Add environment variable in Netlify dashboard
 ```
 
 ### Railway
 
 ```bash
-# Install Railway CLI
 npm i -g @railway/cli
-
-# Deploy
 railway up
-
-# Add environment variable in Railway dashboard
 ```
 
 ### Docker
@@ -248,33 +234,27 @@ CMD ["npm", "start"]
 
 ```bash
 docker build -t music-player .
-docker run -p 3000:3000 -e YOUTUBE_API_KEY=your_key music-player
+docker run -p 3000:3000 music-player
 ```
-
-**Important**: Add `YOUTUBE_API_KEY` environment variable in platform settings
 
 ## 📱 Usage Guide
 
-### Search for Music
-1. Type song name, artist, or album in search bar
+### Search Music
+1. Type song name, artist, or album
 2. Press Enter or click Search
-3. Browse real-time results from YouTube
+3. Get real iTunes results instantly
 
 ### Play Music
-1. Click "▶ Play" on any song
+1. Click "▶ Play" on any track
 2. Player appears at bottom
-3. Music streams automatically
-4. **Note**: May need to click play twice (browser autoplay restriction)
+3. **30-second preview plays** (iTunes limitation)
+4. Use seek bar to navigate
+5. Adjust volume with slider
 
 ### Build Queue
 1. Click "+ Queue" to add songs
 2. Queue shows in left sidebar
 3. Navigate with Previous/Next buttons
-
-### Get Recommendations
-1. Play any song
-2. Click "Recommendations" tab
-3. See AI-suggested similar songs
 
 ### Create Playlists
 1. Click "+ New" in Playlists section
@@ -285,11 +265,11 @@ docker run -p 3000:3000 -e YOUTUBE_API_KEY=your_key music-player
 ## 🔒 Privacy & Legal
 
 ### 100% Legal
-- ✅ Uses official YouTube APIs
-- ✅ Embeds YouTube player (like Google does)
+- ✅ Uses official iTunes Search API
+- ✅ 30-second previews (Apple's terms)
 - ✅ No content storage or downloading
 - ✅ Streams from original sources
-- ✅ Respects YouTube Terms of Service
+- ✅ Optional YouTube embed (official API)
 
 ### Privacy
 - No user tracking
@@ -299,34 +279,27 @@ docker run -p 3000:3000 -e YOUTUBE_API_KEY=your_key music-player
 
 ## 🚨 Important Notes
 
-### API Quotas
+### iTunes Preview Limitation
+- **30-second previews only** (Apple's policy)
+- Full songs require iTunes/Apple Music subscription
+- Preview quality: 128kbps AAC
 
-**YouTube Data API v3 Free Tier**:
-- 10,000 units/day
+### YouTube Integration
+- Optional, requires API key
+- Free tier: 10,000 units/day
 - Each search = ~100 units
 - ~100 searches/day free
 
-**Solution**: App automatically falls back to Invidious if quota exceeded
-
 ### No Hardcoded Songs
-
 ```typescript
 // ❌ WRONG - Hardcoded
 const songs = ['song1.mp3', 'song2.mp3'];
 
-// ✅ CORRECT - Dynamic search
-const songs = await fetch(`/api/search?q=${userQuery}`);
+// ✅ CORRECT - Real API
+const response = await fetch('https://itunes.apple.com/search?term=beatles');
 ```
 
-All songs come from real-time search results!
-
-### Streaming Method
-
-Uses YouTube embed player (legal and official):
-
-```html
-<iframe src="https://www.youtube.com/embed/{videoId}?autoplay=1" />
-```
+All songs come from real iTunes Search API!
 
 ## 🎨 Customization
 
@@ -345,17 +318,15 @@ backgroundColor: '#121212'
 backgroundColor: '#181818'
 ```
 
-### Add More Music Sources
+### Add More Sources
 
 **File**: `app/api/search/route.ts`
 
-Add SoundCloud, Spotify, or other APIs:
-
 ```typescript
-const [youtube, soundcloud, spotify] = await Promise.all([
-  searchYouTube(query),
-  searchSoundCloud(query),
-  searchSpotify(query)
+const [itunes, spotify, soundcloud] = await Promise.all([
+  searchITunes(query),
+  searchSpotify(query),
+  searchSoundCloud(query)
 ]);
 ```
 
@@ -364,32 +335,28 @@ const [youtube, soundcloud, spotify] = await Promise.all([
 ### "No results found"
 - Check internet connection
 - Try different search terms
-- Verify API key (if using YouTube API)
-- Wait 5-10 seconds for Invidious fallback
+- iTunes API might be temporarily down
 
-### "Search failed"
-- Invidious instances might be down
-- Add YouTube API key for reliability
+### Player not working
 - Check browser console for errors
-- See [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
-
-### Player not loading
-- **Click play button twice** (browser autoplay restriction)
-- Check if YouTube is accessible
-- Disable ad blockers for localhost
+- Ensure audio isn't muted
 - Try different browser (Chrome/Edge recommended)
 
-### API quota exceeded
-- App automatically switches to Invidious
-- Or wait 24 hours for quota reset
-- Or create new Google Cloud project
+### Only 30 seconds playing
+- **This is normal!** iTunes provides 30-second previews only
+- Full songs require Apple Music subscription
+
+### YouTube not showing
+- Add `YOUTUBE_API_KEY` to `.env`
+- Verify API key is correct
+- Check quota in Google Cloud Console
 
 ## 📊 Performance
 
-- **Search**: 2-10 seconds (depending on API)
-- **Playback**: Instant (YouTube CDN)
-- **Recommendations**: < 1 second
-- **Playlist load**: Instant (localStorage)
+- **Search**: < 2 seconds (iTunes API)
+- **Playback**: Instant (Apple CDN)
+- **Audio Quality**: 128kbps AAC
+- **Preview Length**: 30 seconds
 
 ## 🤝 Contributing
 
@@ -406,20 +373,22 @@ MIT License - Free for personal and commercial use
 
 ## 🙏 Credits
 
-- Music: YouTube
-- APIs: YouTube Data API v3, Invidious
+- Music: iTunes Search API (Apple)
+- Optional: YouTube Data API v3 (Google)
 - Design: Spotify-inspired
 - Built with: Next.js, React, TypeScript
 
 ## 📧 Support
 
 Issues? Questions?
-- Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md) first
+- Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 - Open GitHub issue
-- Include error messages and browser console logs
+- Include error messages
 
 ---
 
-**Enjoy unlimited music streaming! 🎵**
+**Enjoy real music streaming with iTunes! 🎵**
 
 Built with ❤️ for music lovers worldwide
+
+**Note**: iTunes provides 30-second previews. For full songs, use Apple Music or add other streaming APIs.
