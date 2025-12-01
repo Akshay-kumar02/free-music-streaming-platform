@@ -19,9 +19,7 @@ export default function Home() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playlist, setPlaylist] = useState<Track[]>([]);
   const [loading, setLoading] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const playerRef = useRef<HTMLIFrameElement>(null);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -37,33 +35,13 @@ export default function Home() {
     setLoading(false);
   };
 
-  const playTrack = async (track: Track) => {
-    try {
-      const response = await fetch(`/api/stream?id=${track.id}&source=${track.source}`);
-      const data = await response.json();
-      
-      if (data.streamUrl) {
-        setCurrentTrack(track);
-        if (audioRef.current) {
-          audioRef.current.src = data.streamUrl;
-          audioRef.current.play();
-          setIsPlaying(true);
-        }
-      }
-    } catch (error) {
-      console.error('Play error:', error);
-    }
+  const playTrack = (track: Track) => {
+    setCurrentTrack(track);
+    setIsPlaying(true);
   };
 
   const togglePlay = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
-    }
+    setIsPlaying(!isPlaying);
   };
 
   const addToPlaylist = (track: Track) => {
@@ -76,37 +54,18 @@ export default function Home() {
     setPlaylist(playlist.filter(t => t.id !== trackId));
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const playNext = () => {
+    if (playlist.length === 0) return;
+    const currentIndex = playlist.findIndex(t => t.id === currentTrack?.id);
+    const nextIndex = (currentIndex + 1) % playlist.length;
+    playTrack(playlist[nextIndex]);
   };
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const updateTime = () => setCurrentTime(audio.currentTime);
-    const updateDuration = () => setDuration(audio.duration);
-    const handleEnded = () => setIsPlaying(false);
-
-    audio.addEventListener('timeupdate', updateTime);
-    audio.addEventListener('loadedmetadata', updateDuration);
-    audio.addEventListener('ended', handleEnded);
-
-    return () => {
-      audio.removeEventListener('timeupdate', updateTime);
-      audio.removeEventListener('loadedmetadata', updateDuration);
-      audio.removeEventListener('ended', handleEnded);
-    };
-  }, []);
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = parseFloat(e.target.value);
-    setCurrentTime(time);
-    if (audioRef.current) {
-      audioRef.current.currentTime = time;
-    }
+  const playPrevious = () => {
+    if (playlist.length === 0) return;
+    const currentIndex = playlist.findIndex(t => t.id === currentTrack?.id);
+    const prevIndex = currentIndex <= 0 ? playlist.length - 1 : currentIndex - 1;
+    playTrack(playlist[prevIndex]);
   };
 
   return (
@@ -127,12 +86,13 @@ export default function Home() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {playlist.map(track => (
                 <div key={track.id} style={{ 
-                  backgroundColor: '#282828', 
+                  backgroundColor: currentTrack?.id === track.id ? '#282828' : '#1e1e1e', 
                   padding: '10px', 
                   borderRadius: '6px',
                   display: 'flex',
                   justifyContent: 'space-between',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  border: currentTrack?.id === track.id ? '2px solid #1db954' : 'none'
                 }}>
                   <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => playTrack(track)}>
                     <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{track.title}</div>
@@ -197,7 +157,7 @@ export default function Home() {
           </div>
 
           {/* Search Results */}
-          <div style={{ backgroundColor: '#181818', borderRadius: '8px', padding: '20px' }}>
+          <div style={{ backgroundColor: '#181818', borderRadius: '8px', padding: '20px', marginBottom: currentTrack ? '200px' : '20px' }}>
             <h2 style={{ fontSize: '1.3rem', marginBottom: '20px' }}>
               {tracks.length > 0 ? `🎵 ${tracks.length} Results` : '🎵 Search Results'}
             </h2>
@@ -272,7 +232,7 @@ export default function Home() {
             <p><strong style={{ color: 'white' }}>100% Free</strong><br/>No subscription needed</p>
             <p><strong style={{ color: 'white' }}>No Ads</strong><br/>Uninterrupted listening</p>
             <p><strong style={{ color: 'white' }}>Unlimited</strong><br/>Stream as much as you want</p>
-            <p><strong style={{ color: 'white' }}>Legal Sources</strong><br/>YouTube, SoundCloud & more</p>
+            <p><strong style={{ color: 'white' }}>Legal Sources</strong><br/>YouTube & more</p>
           </div>
         </div>
       </div>
@@ -287,18 +247,34 @@ export default function Home() {
           backgroundColor: '#181818',
           borderTop: '1px solid #282828',
           padding: '15px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '20px'
+          zIndex: 1000
         }}>
-          <img src={currentTrack.thumbnail} alt={currentTrack.title} style={{ width: '56px', height: '56px', borderRadius: '4px' }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '0.95rem', fontWeight: '500' }}>{currentTrack.title}</div>
-            <div style={{ fontSize: '0.8rem', color: '#b3b3b3' }}>{currentTrack.artist}</div>
-          </div>
-          
-          <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '10px' }}>
+            <img src={currentTrack.thumbnail} alt={currentTrack.title} style={{ width: '56px', height: '56px', borderRadius: '4px' }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.95rem', fontWeight: '500' }}>{currentTrack.title}</div>
+              <div style={{ fontSize: '0.8rem', color: '#b3b3b3' }}>{currentTrack.artist}</div>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+              <button
+                onClick={playPrevious}
+                disabled={playlist.length === 0}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  backgroundColor: playlist.length === 0 ? '#333' : '#535353',
+                  border: 'none',
+                  color: 'white',
+                  fontSize: '1rem',
+                  cursor: playlist.length === 0 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >⏮</button>
+              
               <button
                 onClick={togglePlay}
                 style={{
@@ -317,34 +293,68 @@ export default function Home() {
               >
                 {isPlaying ? '⏸' : '▶'}
               </button>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '0.75rem', color: '#b3b3b3', minWidth: '40px' }}>{formatTime(currentTime)}</span>
-              <input
-                type="range"
-                min="0"
-                max={duration || 0}
-                value={currentTime}
-                onChange={handleSeek}
+              
+              <button
+                onClick={playNext}
+                disabled={playlist.length === 0}
                 style={{
-                  flex: 1,
-                  height: '4px',
-                  borderRadius: '2px',
-                  outline: 'none',
-                  background: `linear-gradient(to right, #1db954 0%, #1db954 ${(currentTime / duration) * 100}%, #4d4d4d ${(currentTime / duration) * 100}%, #4d4d4d 100%)`
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  backgroundColor: playlist.length === 0 ? '#333' : '#535353',
+                  border: 'none',
+                  color: 'white',
+                  fontSize: '1rem',
+                  cursor: playlist.length === 0 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
-              />
-              <span style={{ fontSize: '0.75rem', color: '#b3b3b3', minWidth: '40px' }}>{formatTime(duration)}</span>
+              >⏭</button>
             </div>
+            
+            <div style={{ fontSize: '0.75rem', color: '#1db954', fontWeight: '600' }}>
+              {currentTrack.source.toUpperCase()}
+            </div>
+            
+            <a 
+              href={currentTrack.url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#535353',
+                border: 'none',
+                borderRadius: '20px',
+                color: 'white',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                textDecoration: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              Open in YouTube
+            </a>
           </div>
-          
-          <div style={{ fontSize: '0.75rem', color: '#1db954', fontWeight: '600' }}>
-            {currentTrack.source.toUpperCase()}
-          </div>
+
+          {/* YouTube Player */}
+          {isPlaying && currentTrack.source === 'youtube' && (
+            <div style={{ marginTop: '10px' }}>
+              <iframe
+                ref={playerRef}
+                width="100%"
+                height="80"
+                src={`https://www.youtube.com/embed/${currentTrack.id}?autoplay=1&enablejsapi=1`}
+                title={currentTrack.title}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{ borderRadius: '8px' }}
+              />
+            </div>
+          )}
         </div>
       )}
-
-      <audio ref={audioRef} />
     </div>
   );
 }
