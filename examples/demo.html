@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎵 Music Player Demo - iTunes Search API</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #121212;
+      color: white;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    header {
+      background: #1db954;
+      padding: 20px 30px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+    }
+    
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 5px;
+    }
+    
+    .subtitle {
+      opacity: 0.9;
+      font-size: 0.9rem;
+    }
+    
+    #search-container {
+      background: #181818;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .search-box {
+      display: flex;
+      gap: 10px;
+    }
+    
+    #search-input {
+      flex: 1;
+      padding: 12px 20px;
+      background: #282828;
+      border: 2px solid #333;
+      border-radius: 25px;
+      color: white;
+      font-size: 1rem;
+      outline: none;
+    }
+    
+    #search-input:focus {
+      border-color: #1db954;
+    }
+    
+    #search-button {
+      padding: 12px 30px;
+      background: #1db954;
+      border: none;
+      border-radius: 25px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.2s;
+    }
+    
+    #search-button:hover {
+      background: #1ed760;
+    }
+    
+    #search-button:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+    
+    #now-playing {
+      background: #181818;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      min-height: 80px;
+    }
+    
+    #results-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .track-card {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px;
+      background: #282828;
+      border-radius: 8px;
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+    
+    .track-card:hover {
+      background: #3e3e3e;
+    }
+    
+    .track-card img {
+      width: 60px;
+      height: 60px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+    
+    .track-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .track-title {
+      font-weight: 500;
+      font-size: 1rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    
+    .track-artist {
+      color: #b3b3b3;
+      font-size: 0.85rem;
+    }
+    
+    .track-album {
+      color: #888;
+      font-size: 0.75rem;
+      margin-top: 2px;
+    }
+    
+    .track-meta {
+      color: #1db954;
+      font-size: 0.75rem;
+      margin-top: 4px;
+    }
+    
+    .play-button {
+      padding: 10px 20px;
+      background: #1db954;
+      border: none;
+      border-radius: 20px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .play-button:hover {
+      background: #1ed760;
+    }
+    
+    .stop-button {
+      padding: 8px 16px;
+      background: #535353;
+      border: none;
+      border-radius: 20px;
+      color: white;
+      cursor: pointer;
+      margin-left: auto;
+    }
+    
+    .stop-button:hover {
+      background: #666;
+    }
+    
+    .now-playing-card {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .now-playing-card img {
+      width: 50px;
+      height: 50px;
+      border-radius: 4px;
+    }
+    
+    .empty-state {
+      text-align: center;
+      color: #888;
+      padding: 40px 20px;
+    }
+    
+    .loading {
+      text-align: center;
+      color: #1db954;
+      padding: 20px;
+    }
+    
+    footer {
+      text-align: center;
+      color: #888;
+      margin-top: 40px;
+      padding: 20px;
+      font-size: 0.85rem;
+    }
+    
+    .note {
+      background: #282828;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid #1db954;
+    }
+    
+    .note strong {
+      color: #1db954;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎵 Music Player Demo</h1>
+      <p class="subtitle">Real iTunes Search API • 30-second previews • No API key needed!</p>
+    </header>
+    
+    <div class="note">
+      <strong>Note:</strong> This demo uses the iTunes Search API which provides 30-second song previews. 
+      No API key required! Just search and play instantly.
+    </div>
+    
+    <div id="search-container">
+      <div class="search-box">
+        <input 
+          type="text" 
+          id="search-input" 
+          placeholder="Search for songs, artists, albums... (e.g., 'Beatles', 'Taylor Swift')"
+          autofocus
+        >
+        <button id="search-button" onclick="handleSearch()">🔍 Search</button>
+      </div>
+    </div>
+    
+    <div id="now-playing">
+      <p class="empty-state">No song playing</p>
+    </div>
+    
+    <div id="results-container"></div>
+    
+    <footer>
+      <p>Built with iTunes Search API • No API key required • 30-second previews</p>
+      <p style="margin-top: 10px;">
+        <a href="https://github.com/Akshay-kumar02/free-music-streaming-platform" 
+           style="color: #1db954; text-decoration: none;">
+          View on GitHub
+        </a>
+      </p>
+    </footer>
+  </div>
+  
+  <script src="standalone-player.js"></script>
+  <script>
+    // Handle search button click
+    async function handleSearch() {
+      const input = document.getElementById('search-input');
+      const button = document.getElementById('search-button');
+      const resultsContainer = document.getElementById('results-container');
+      const query = input.value.trim();
+      
+      if (!query) {
+        alert('Please enter a search term');
+        return;
+      }
+      
+      // Show loading state
+      button.disabled = true;
+      button.textContent = '⏳ Searching...';
+      resultsContainer.innerHTML = '<div class="loading">Searching iTunes...</div>';
+      
+      try {
+        const results = await searchSongs(query);
+        displaySearchResults(results);
+        button.textContent = '🔍 Search';
+      } catch (error) {
+        resultsContainer.innerHTML = `
+          <div class="empty-state">
+            <p style="color: #ff4444;">Search failed: ${error.message}</p>
+            <p style="margin-top: 10px;">Please try again or check your internet connection.</p>
+          </div>
+        `;
+        button.textContent = '🔍 Search';
+      } finally {
+        button.disabled = false;
+      }
+    }
+    
+    // Handle Enter key in search input
+    document.getElementById('search-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        handleSearch();
+      }
+    });
+    
+    // Show welcome message on load
+    window.addEventListener('load', () => {
+      const resultsContainer = document.getElementById('results-container');
+      resultsContainer.innerHTML = `
+        <div class="empty-state">
+          <div style="font-size: 3rem; margin-bottom: 20px;">🎵</div>
+          <h2 style="font-size: 1.5rem; margin-bottom: 10px;">Search for music</h2>
+          <p>Try searching for your favorite songs, artists, or albums</p>
+          <p style="margin-top: 15px; color: #1db954;">Examples: "Beatles", "Taylor Swift", "Bohemian Rhapsody"</p>
+        </div>
+      `;
+    });
+  </script>
+</body>
+</html>
