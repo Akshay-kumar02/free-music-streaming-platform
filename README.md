@@ -3,6 +3,7 @@
 **Real music streaming with iTunes Search API + optional YouTube integration**
 
 Search ANY song, get 30-second iTunes previews, AI recommendations, create playlists - completely free!
+link- https://free-music-streaming-platform.vercel.app/
 
 ## ✨ Features
 
